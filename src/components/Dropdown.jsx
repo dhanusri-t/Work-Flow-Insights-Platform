@@ -25,9 +25,9 @@ export function Dropdown({
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      <div onClick={() => setIsOpen(!isOpen)} className="cursor-pointer">
+      <span onClick={() => setIsOpen(!isOpen)} className="cursor-pointer inline-block">
         {trigger}
-      </div>
+      </span>
       
       {isOpen && (
         <div 

@@ -1,50 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Plus, 
   Search, 
   Filter, 
-  LayoutGrid, 
-  List,
   ArrowUpDown,
-  Calendar,
-  Bell,
-  MoreHorizontal
+  Loader2
 } from "lucide-react";
 import KanbanBoard from "../components/KanbanBoard";
 import SearchBar from "../components/SearchBar";
 import { Dropdown } from "../components/Dropdown";
 import Modal from "../components/Modal";
 import Avatar from "../components/Avatar";
-
-const allTasks = [
-  { id: 1, title: "Send welcome email", status: "done", priority: "high", assignee: { name: "Sarah Chen" }, dueDate: new Date(), comments: 2 },
-  { id: 2, title: "Prepare workstation", status: "done", priority: "high", assignee: { name: "Mike Johnson" }, dueDate: new Date(), comments: 0 },
-  { id: 3, title: "Setup email account", status: "done", priority: "medium", assignee: { name: "Mike Johnson" }, dueDate: new Date(), comments: 1 },
-  { id: 4, title: "Create company badges", status: "in_progress", priority: "medium", assignee: { name: "Emily Davis" }, dueDate: new Date(), comments: 3 },
-  { id: 5, title: "Schedule orientation", status: "in_progress", priority: "high", assignee: { name: "Sarah Chen" }, dueDate: new Date(), comments: 1 },
-  { id: 6, title: "Prepare onboarding materials", status: "todo", priority: "medium", assignee: { name: "Emily Davis" }, dueDate: new Date(), comments: 0 },
-  { id: 7, title: "Assign buddy mentor", status: "todo", priority: "low", assignee: null, dueDate: new Date(), comments: 0 },
-  { id: 8, title: "Setup software access", status: "todo", priority: "high", assignee: { name: "Mike Johnson" }, dueDate: new Date(), comments: 2 },
-  { id: 9, title: "HR paperwork completion", status: "review", priority: "high", assignee: { name: "Sarah Chen" }, dueDate: new Date(), comments: 5 },
-  { id: 10, title: "Team introduction meeting", status: "todo", priority: "low", assignee: null, dueDate: new Date(), comments: 0 },
-  { id: 11, title: "Review quarterly budget", status: "in_progress", priority: "high", assignee: { name: "Alex Kim" }, dueDate: new Date(), comments: 1 },
-  { id: 12, title: "Update client database", status: "review", priority: "medium", assignee: { name: "Emily Davis" }, dueDate: new Date(), comments: 0 },
-];
+import { tasksAPI, workflowsAPI, teamAPI } from "../api/api";
 
 const columns = [
   { id: "todo", title: "To Do", color: "bg-gray-500" },
   { id: "in_progress", title: "In Progress", color: "bg-blue-500" },
   { id: "review", title: "In Review", color: "bg-amber-500" },
   { id: "done", title: "Done", color: "bg-emerald-500" },
-];
-
-const teamMembers = [
-  { value: "all", label: "All Members" },
-  { value: "Sarah Chen", label: "Sarah Chen" },
-  { value: "Mike Johnson", label: "Mike Johnson" },
-  { value: "Emily Davis", label: "Emily Davis" },
-  { value: "Alex Kim", label: "Alex Kim" },
 ];
 
 const priorityFilters = [
@@ -63,43 +37,138 @@ const sortOptions = [
 
 export default function Tasks() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState([]);
+  const [workflows, setWorkflows] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  
   const [searchQuery, setSearchQuery] = useState("");
+  const [workflowFilter, setWorkflowFilter] = useState("all");
   const [memberFilter, setMemberFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sortBy, setSortBy] = useState("dueDate");
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  
+  const [newTask, setNewTask] = useState({
+    workflow_id: "",
+    title: "",
+    description: "",
+    priority: "medium",
+    assigned_to: ""
+  });
 
-  const filteredTasks = allTasks
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [workflowFilter, priorityFilter, memberFilter, searchQuery]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [tasksRes, workflowsRes, teamRes] = await Promise.all([
+        tasksAPI.getAll(),
+        workflowsAPI.getAll(),
+        teamAPI.getAll()
+      ]);
+      
+      setTasks(tasksRes.data);
+      setWorkflows(workflowsRes.data);
+      setTeamMembers(teamRes.data);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const params = {};
+      if (workflowFilter !== "all") params.workflow_id = workflowFilter;
+      if (priorityFilter !== "all") params.priority = priorityFilter;
+      if (memberFilter !== "all") params.assigned_to = memberFilter;
+      if (searchQuery) params.search = searchQuery;
+      
+      const res = await tasksAPI.getAll(params);
+      setTasks(res.data);
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error);
+    }
+  };
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    try {
+      setCreating(true);
+      const taskData = {
+        ...newTask,
+        assigned_to: newTask.assigned_to || null
+      };
+      await tasksAPI.create(taskData);
+      setShowAddTaskModal(false);
+      setNewTask({ workflow_id: "", title: "", description: "", priority: "medium", assigned_to: "" });
+      fetchTasks();
+    } catch (error) {
+      console.error("Failed to create task:", error);
+      alert("Failed to create task. Please try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleTaskMove = async (taskId, newStatus) => {
+    try {
+      await tasksAPI.update(taskId, { status: newStatus });
+      fetchTasks();
+    } catch (error) {
+      console.error("Failed to update task:", error);
+    }
+  };
+
+  const filteredTasks = tasks
     .filter(task => {
-      if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      if (memberFilter !== "all" && task.assignee?.name !== memberFilter) return false;
-      if (priorityFilter !== "all" && task.priority !== priorityFilter) return false;
+      if (searchQuery && !task.title?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     })
     .sort((a, b) => {
       switch (sortBy) {
         case "priority": 
           const priorityOrder = { high: 0, medium: 1, low: 2 };
-          return priorityOrder[a.priority] - priorityOrder[b.priority];
-        case "alphabetical": return a.title.localeCompare(b.title);
+          return (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
+        case "alphabetical": return (a.title || "").localeCompare(b.title || "");
         case "created": return b.id - a.id;
-        default: return new Date(a.dueDate) - new Date(b.dueDate);
+        default: return new Date(b.created_at) - new Date(a.created_at);
       }
     });
 
-  const handleTaskMove = (taskId, newStatus) => {
-    console.log("Moving task", taskId, "to", newStatus);
-  };
+  const workflowOptions = [
+    { value: "all", label: "All Workflows" },
+    ...workflows.map(w => ({ value: w.id.toString(), label: w.title }))
+  ];
+
+  const memberOptions = [
+    { value: "all", label: "All Members" },
+    ...teamMembers.map(m => ({ value: m.id.toString(), label: m.name }))
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tasks</h1>
-          <p className="text-gray-500 mt-1">
-            Manage and track all your tasks across workflows
-          </p>
+          <p className="text-gray-500 mt-1">Manage and track all your tasks across workflows</p>
         </div>
         
         <button 
@@ -111,10 +180,8 @@ export default function Tasks() {
         </button>
       </div>
 
-      {/* Filters Bar */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* Search */}
           <div className="flex-1">
             <SearchBar
               placeholder="Search tasks..."
@@ -123,24 +190,34 @@ export default function Tasks() {
             />
           </div>
 
-          {/* Filter Buttons */}
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Member Filter */}
             <Dropdown
               trigger={
                 <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-colors">
                   <Filter size={16} />
-                  {teamMembers.find(m => m.value === memberFilter)?.label}
+                  {workflowOptions.find(w => w.value === workflowFilter)?.label || "All Workflows"}
                 </button>
               }
-              items={teamMembers.map(m => ({
+              items={workflowOptions.map(w => ({
+                label: w.label,
+                checked: workflowFilter === w.value,
+                onClick: () => setWorkflowFilter(w.value),
+              }))}
+            />
+
+            <Dropdown
+              trigger={
+                <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-colors">
+                  {memberOptions.find(m => m.value === memberFilter)?.label || "All Members"}
+                </button>
+              }
+              items={memberOptions.map(m => ({
                 label: m.label,
                 checked: memberFilter === m.value,
                 onClick: () => setMemberFilter(m.value),
               }))}
             />
 
-            {/* Priority Filter */}
             <Dropdown
               trigger={
                 <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-colors">
@@ -154,7 +231,6 @@ export default function Tasks() {
               }))}
             />
 
-            {/* Sort */}
             <Dropdown
               trigger={
                 <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 transition-colors">
@@ -172,7 +248,6 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {columns.map(column => {
           const count = filteredTasks.filter(t => t.status === column.id).length;
@@ -188,77 +263,85 @@ export default function Tasks() {
         })}
       </div>
 
-      {/* Kanban Board */}
       <KanbanBoard
         columns={columns}
         tasks={filteredTasks}
         onTaskMove={handleTaskMove}
         onTaskClick={(task) => console.log("Clicked task:", task)}
         onAddTask={(columnId) => {
-          console.log("Add task to:", columnId);
+          setNewTask({ ...newTask, status: columnId });
           setShowAddTaskModal(true);
         }}
       />
 
-      {/* Add Task Modal */}
       <Modal
         isOpen={showAddTaskModal}
         onClose={() => setShowAddTaskModal(false)}
         title="Add New Task"
         size="md"
       >
-        <form className="space-y-4">
+        <form onSubmit={handleCreateTask} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Task Title
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Workflow *</label>
+            <select
+              value={newTask.workflow_id}
+              onChange={(e) => setNewTask({ ...newTask, workflow_id: e.target.value })}
+              required
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            >
+              <option value="">Select workflow</option>
+              {workflows.map(w => (
+                <option key={w.id} value={w.id}>{w.title}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Task Title *</label>
             <input
               type="text"
+              value={newTask.title}
+              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
               placeholder="Enter task title"
+              required
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Priority
-              </label>
-              <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Priority</label>
+              <select
+                value={newTask.priority}
+                onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Due Date
-              </label>
-              <input
-                type="date"
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Assignee</label>
+              <select
+                value={newTask.assigned_to}
+                onChange={(e) => setNewTask({ ...newTask, assigned_to: e.target.value })}
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
+              >
+                <option value="">Unassigned</option>
+                {teamMembers.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Assignee
-            </label>
-            <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
-              <option value="">Unassigned</option>
-              {teamMembers.filter(m => m.value !== "all").map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
             <textarea
               rows={3}
+              value={newTask.description}
+              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
               placeholder="Add a description..."
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
             />
@@ -274,8 +357,10 @@ export default function Tasks() {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors"
+              disabled={creating || !newTask.workflow_id || !newTask.title}
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
             >
+              {creating && <Loader2 className="w-4 h-4 animate-spin" />}
               Add Task
             </button>
           </div>
