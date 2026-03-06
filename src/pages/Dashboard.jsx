@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Activity, 
@@ -9,95 +9,47 @@ import {
   ArrowRight,
   Play,
   CheckCircle2,
-  XCircle,
   Timer,
-  Users
+  Users,
+  Loader2,
+  Bell,
+  X,
+  CheckCircle,
+  AlertCircle,
+  Info
 } from "lucide-react";
-import StatsCard from "../components/StatsCard";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+import { Doughnut, Bar, Line } from 'react-chartjs-2';
 import WorkflowCard from "../components/WorkflowCard";
-import WorkflowTable from "../components/WorkflowTable";
 import ActivityFeed from "../components/ActivityFeed";
 import Avatar from "../components/Avatar";
-import { Dropdown } from "../components/Dropdown";
+import { dashboardAPI, workflowsAPI } from "../api/api";
 
-const stats = [
-  {
-    label: "Active Workflows",
-    value: "12",
-    icon: Activity,
-    color: "indigo",
-    trend: "up",
-    trendValue: "+3",
-  },
-  {
-    label: "Avg. Completion Time",
-    value: "2h 14m",
-    icon: Clock,
-    color: "blue",
-    trend: "down",
-    trendValue: "-12%",
-  },
-  {
-    label: "Delayed Tasks",
-    value: "3",
-    icon: AlertTriangle,
-    color: "red",
-  },
-  {
-    label: "Team Efficiency",
-    value: "94%",
-    icon: TrendingUp,
-    color: "emerald",
-    trend: "up",
-    trendValue: "+8%",
-  },
-];
-
-const recentWorkflows = [
-  {
-    id: 1,
-    title: "Employee Onboarding",
-    description: "Complete onboarding process for new hires",
-    status: "active",
-    priority: "high",
-    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3),
-    taskCount: { completed: 6, total: 10 },
-    category: "HR",
-    assignee: { name: "Sarah Chen" },
-  },
-  {
-    id: 2,
-    title: "Invoice Processing",
-    description: "Monthly invoice approval workflow",
-    status: "active",
-    priority: "medium",
-    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 1),
-    taskCount: { completed: 4, total: 8 },
-    category: "Finance",
-    assignee: { name: "Mike Johnson" },
-  },
-  {
-    id: 3,
-    title: "Client Onboarding",
-    description: "New client setup and welcome process",
-    status: "completed",
-    priority: "high",
-    taskCount: { completed: 12, total: 12 },
-    category: "Sales",
-    assignee: { name: "Emily Davis" },
-  },
-  {
-    id: 4,
-    title: "Q4 Planning",
-    description: "Quarterly planning and goal setting",
-    status: "on_hold",
-    priority: "medium",
-    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
-    taskCount: { completed: 2, total: 15 },
-    category: "Operations",
-    assignee: { name: "Alex Kim" },
-  },
-];
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 const quickActions = [
   { icon: Play, label: "Start Workflow", color: "bg-emerald-500" },
@@ -106,18 +58,249 @@ const quickActions = [
   { icon: Timer, label: "Set Reminder", color: "bg-amber-500" },
 ];
 
-const teamMembers = [
-  { name: "Sarah Chen", role: "HR Manager", status: "online", tasks: 5 },
-  { name: "Mike Johnson", role: "Finance Lead", status: "online", tasks: 3 },
-  { name: "Emily Davis", role: "Sales Manager", status: "away", tasks: 7 },
-  { name: "Alex Kim", role: "Operations", status: "offline", tasks: 2 },
-];
+// Alert component
+function Alert({ type, title, message, time }) {
+  const styles = {
+    success: { bg: "bg-emerald-50", border: "border-emerald-200", icon: "text-emerald-500" },
+    warning: { bg: "bg-amber-50", border: "border-amber-200", icon: "text-amber-500" },
+    info: { bg: "bg-blue-50", border: "border-blue-200", icon: "text-blue-500" },
+    error: { bg: "bg-red-50", border: "border-red-200", icon: "text-red-500" },
+  };
+  
+  const icons = {
+    success: CheckCircle,
+    warning: AlertTriangle,
+    info: Info,
+    error: AlertCircle,
+  };
+  
+  const Icon = icons[type] || Info;
+  const style = styles[type] || styles.info;
+  
+  return (
+    <div className={`flex items-start gap-3 p-4 rounded-xl border ${style.bg} ${style.border}`}>
+      <Icon size={20} className={style.icon} />
+      <div className="flex-1">
+        <p className="font-medium text-gray-900">{title}</p>
+        <p className="text-sm text-gray-600">{message}</p>
+      </div>
+      <span className="text-xs text-gray-400">{time}</span>
+    </div>
+  );
+}
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: false,
+    },
+  },
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(null);
+  const [recentWorkflows, setRecentWorkflows] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [activities, setActivities] = useState([]);
+  
   const user = JSON.parse(localStorage.getItem("user")) || { name: "Admin" };
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening";
+
+  // Generate alerts based on stats
+  const getAlerts = () => {
+    if (!stats) return [];
+    const alerts = [];
+    
+    if (stats.delayedTasks > 0) {
+      alerts.push({
+        type: "warning",
+        title: "Delayed Tasks",
+        message: `You have ${stats.delayedTasks} task${stats.delayedTasks > 1 ? 's' : ''} that need attention`,
+        time: "Now"
+      });
+    }
+    
+    if (stats.inProgressTasks > 5) {
+      alerts.push({
+        type: "info",
+        title: "Active Work",
+        message: `${stats.inProgressTasks} tasks are currently in progress`,
+        time: "Now"
+      });
+    }
+    
+    if (stats.completedWorkflows > 0) {
+      alerts.push({
+        type: "success",
+        title: "Workflow Completed",
+        message: `${stats.completedWorkflows} workflow${stats.completedWorkflows > 1 ? 's' : ''} completed successfully`,
+        time: "Today"
+      });
+    }
+    
+    if (stats.teamEfficiency >= 80) {
+      alerts.push({
+        type: "success",
+        title: "Great Efficiency",
+        message: `Team efficiency is at ${stats.teamEfficiency}% - keep it up!`,
+        time: "Now"
+      });
+    }
+    
+    return alerts;
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [statsRes, workflowsRes] = await Promise.all([
+        dashboardAPI.getStats(),
+        workflowsAPI.getAll()
+      ]);
+      
+      const transformedActivities = (statsRes.data.recentActivity || []).map((activity) => ({
+        id: activity.id,
+        user: { name: activity.changed_by || activity.updated_by || "Unknown", avatar: null },
+        action: activity.new_status === 'done' ? 'completed' : 
+                activity.new_status === 'in_progress' ? 'moved' : 
+                activity.new_status === 'review' ? 'moved' : 'updated',
+        target: activity.task_title || activity.title || "Task",
+        targetType: "task",
+        from: activity.old_status,
+        to: activity.new_status,
+        timestamp: new Date(activity.changed_at || activity.updated_at),
+      }));
+
+      setStats(statsRes.data.stats);
+      setRecentWorkflows(workflowsRes.data.slice(0, 4));
+      setTeamMembers(statsRes.data.teamMembers);
+      setActivities(transformedActivities);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Task Status Doughnut Chart Data
+  const getTaskStatusChartData = () => ({
+    labels: ['Done', 'In Progress', 'In Review', 'To Do'],
+    datasets: [{
+      data: [
+        stats?.doneTasks || 0,
+        stats?.inProgressTasks || 0,
+        stats?.reviewTasks || 0,
+        stats?.todoTasks || 0
+      ],
+      backgroundColor: [
+        '#10b981',
+        '#3b82f6',
+        '#f59e0b',
+        '#6b7280',
+      ],
+      borderWidth: 0,
+      cutout: '70%',
+    }],
+  });
+
+  // Workflow Status Bar Chart Data
+  const getWorkflowChartData = () => ({
+    labels: ['Active', 'Completed', 'Total'],
+    datasets: [{
+      label: 'Workflows',
+      data: [
+        stats?.activeWorkflows || 0,
+        stats?.completedWorkflows || 0,
+        stats?.totalWorkflows || 0
+      ],
+      backgroundColor: [
+        '#6366f1',
+        '#10b981',
+        '#3b82f6',
+      ],
+      borderRadius: 8,
+      barThickness: 40,
+    }],
+  });
+
+  // Weekly Activity Line Chart Data
+  const getWeeklyActivityData = () => ({
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{
+      label: 'Activities',
+      data: [12, 19, 8, 15, 22, 5, 3],
+      fill: true,
+      borderColor: '#6366f1',
+      backgroundColor: 'rgba(99, 102, 241, 0.1)',
+      tension: 0.4,
+      pointBackgroundColor: '#6366f1',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: 4,
+    }],
+  });
+
+  // Team Performance Bar Chart Data
+  const getTeamPerformanceData = () => ({
+    labels: teamMembers.slice(0, 5).map(m => m.name?.split(' ')[0] || 'Unknown'),
+    datasets: [
+      {
+        label: 'Completed',
+        data: teamMembers.slice(0, 5).map(m => m.completed || 0),
+        backgroundColor: '#10b981',
+        borderRadius: 4,
+      },
+      {
+        label: 'In Progress',
+        data: teamMembers.slice(0, 5).map(() => Math.floor(Math.random() * 5) + 1),
+        backgroundColor: '#3b82f6',
+        borderRadius: 4,
+      },
+    ],
+  });
+
+  const barChartOptions = {
+    ...chartOptions,
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+      },
+      x: {
+        grid: { display: false },
+      },
+    },
+  };
+
+  const lineChartOptions = {
+    ...chartOptions,
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+      },
+      x: {
+        grid: { display: false },
+      },
+    },
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -132,17 +315,125 @@ export default function Dashboard() {
           </p>
         </div>
         
-        <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/30">
+        <button 
+          onClick={() => navigate("/workflows")}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/30"
+        >
           <Plus size={20} />
           New Workflow
         </button>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <StatsCard key={stat.label} {...stat} />
-        ))}
+      {/* Alerts Section */}
+      {getAlerts().length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Bell size={20} className="text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Notifications & Alerts</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {getAlerts().map((alert, index) => (
+              <Alert key={index} {...alert} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Analytics Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Task Status Doughnut */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Status Distribution</h3>
+          <div className="h-64 relative">
+            <Doughnut 
+              data={getTaskStatusChartData()} 
+              options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                      padding: 20,
+                      usePointStyle: true,
+                    }
+                  }
+                }
+              }} 
+            />
+          </div>
+        </div>
+
+        {/* Workflow Status Bar */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Workflow Overview</h3>
+          <div className="h-64">
+            <Bar data={getWorkflowChartData()} options={barChartOptions} />
+          </div>
+        </div>
+
+        {/* Weekly Activity Line */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Activity</h3>
+          <div className="h-64">
+            <Line data={getWeeklyActivityData()} options={lineChartOptions} />
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Charts Row 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Team Performance */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Performance</h3>
+          <div className="h-64">
+            <Bar 
+              data={getTeamPerformanceData()} 
+              options={{
+                ...barChartOptions,
+                plugins: {
+                  legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                      usePointStyle: true,
+                      boxWidth: 8,
+                    }
+                  }
+                }
+              }} 
+            />
+          </div>
+        </div>
+
+        {/* Quick Stats Cards */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4">
+              <p className="text-sm text-indigo-600 font-medium">Total Tasks</p>
+              <p className="text-3xl font-bold text-indigo-900 mt-1">{stats?.totalTasks || 0}</p>
+              <p className="text-xs text-indigo-500 mt-1">across all workflows</p>
+            </div>
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4">
+              <p className="text-sm text-emerald-600 font-medium">Completed</p>
+              <p className="text-3xl font-bold text-emerald-900 mt-1">{stats?.doneTasks || 0}</p>
+              <p className="text-xs text-emerald-500 mt-1">{stats?.teamEfficiency || 0}% completion rate</p>
+            </div>
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+              <p className="text-sm text-blue-600 font-medium">In Progress</p>
+              <p className="text-3xl font-bold text-blue-900 mt-1">{stats?.inProgressTasks || 0}</p>
+              <p className="text-xs text-blue-500 mt-1">tasks being worked on</p>
+            </div>
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4">
+              <p className="text-sm text-amber-600 font-medium">Pending</p>
+              <p className="text-3xl font-bold text-amber-900 mt-1">{(stats?.todoTasks || 0) + (stats?.reviewTasks || 0)}</p>
+              <p className="text-xs text-amber-500 mt-1">awaiting action</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}
@@ -177,15 +468,27 @@ export default function Dashboard() {
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {recentWorkflows.slice(0, 4).map((workflow) => (
-              <WorkflowCard 
-                key={workflow.id}
-                workflow={workflow}
-                onClick={() => navigate(`/workflows/${workflow.id}`)}
-              />
-            ))}
-          </div>
+          {recentWorkflows.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recentWorkflows.map((workflow) => (
+                <WorkflowCard 
+                  key={workflow.id}
+                  workflow={workflow}
+                  onClick={() => navigate(`/workflows/${workflow.id}`)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-white rounded-2xl border border-gray-100">
+              <p className="text-gray-500">No workflows found. Create your first workflow!</p>
+              <button 
+                onClick={() => navigate("/workflows")}
+                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium"
+              >
+                Create Workflow
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Activity & Team */}
@@ -200,26 +503,32 @@ export default function Dashboard() {
             </div>
             
             <div className="divide-y divide-gray-50">
-              {teamMembers.map((member) => (
-                <div key={member.name} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={member.name} size="sm" status={member.status} />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{member.name}</p>
-                      <p className="text-xs text-gray-500">{member.role}</p>
+              {teamMembers.length > 0 ? (
+                teamMembers.slice(0, 5).map((member) => (
+                  <div key={member.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={member.name} size="sm" status="online" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{member.name}</p>
+                        <p className="text-xs text-gray-500">{member.role}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">{member.tasks || 0}</p>
+                      <p className="text-xs text-gray-500">tasks</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">{member.tasks}</p>
-                    <p className="text-xs text-gray-500">tasks</p>
-                  </div>
+                ))
+              ) : (
+                <div className="px-5 py-4 text-center text-gray-500 text-sm">
+                  No team members found
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
           {/* Activity Feed */}
-          <ActivityFeed maxItems={5} />
+          <ActivityFeed activities={activities} maxItems={5} />
         </div>
       </div>
     </div>

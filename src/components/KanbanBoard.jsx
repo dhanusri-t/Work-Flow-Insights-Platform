@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MoreHorizontal, Plus, GripVertical } from "lucide-react";
 import { Dropdown } from "./Dropdown";
+import Avatar from "./Avatar";
 
 const defaultColumns = [
   { id: "todo", title: "To Do", color: "bg-gray-500" },
@@ -131,10 +132,9 @@ export default function KanbanBoard({
                       )}
                     </div>
                     {task.assignee && (
-                      <img 
-                        src={task.assignee.avatar} 
-                        alt={task.assignee.name}
-                        className="w-6 h-6 rounded-full"
+                      <Avatar 
+                        name={task.assignee.name}
+                        size="sm"
                       />
                     )}
                   </div>
