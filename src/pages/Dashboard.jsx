@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Activity, 
-  Clock, 
-  AlertTriangle, 
-  TrendingUp,
+import {
+  AlertTriangle,
   Plus,
   ArrowRight,
   Play,
@@ -13,91 +10,88 @@ import {
   Users,
   Loader2,
   Bell,
-  X,
   CheckCircle,
   AlertCircle,
-  Info
+  Info,
+  LayoutGrid,
+  ListChecks,
+  Zap,
+  Clock,
+  TrendingUp,
 } from "lucide-react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
-import { Doughnut, Bar, Line } from 'react-chartjs-2';
+
 import WorkflowCard from "../components/WorkflowCard";
 import ActivityFeed from "../components/ActivityFeed";
 import Avatar from "../components/Avatar";
 import { dashboardAPI, workflowsAPI } from "../api/api";
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
 const quickActions = [
-  { icon: Play, label: "Start Workflow", color: "bg-emerald-500" },
-  { icon: CheckCircle2, label: "Complete Task", color: "bg-blue-500" },
-  { icon: Users, label: "Add Member", color: "bg-purple-500" },
-  { icon: Timer, label: "Set Reminder", color: "bg-amber-500" },
+  { icon: Play, label: "Start Workflow", gradient: "linear-gradient(135deg,#10b981,#059669)", shadow: "rgba(16,185,129,0.35)" },
+  { icon: CheckCircle2, label: "Complete Task", gradient: "linear-gradient(135deg,#3b82f6,#2563eb)", shadow: "rgba(59,130,246,0.35)" },
+  { icon: Users, label: "Add Member", gradient: "linear-gradient(135deg,#8b5cf6,#7c3aed)", shadow: "rgba(139,92,246,0.35)" },
+  { icon: Timer, label: "Set Reminder", gradient: "linear-gradient(135deg,#f59e0b,#d97706)", shadow: "rgba(245,158,11,0.35)" },
 ];
 
-// Alert component
 function Alert({ type, title, message, time }) {
   const styles = {
-    success: { bg: "bg-emerald-50", border: "border-emerald-200", icon: "text-emerald-500" },
-    warning: { bg: "bg-amber-50", border: "border-amber-200", icon: "text-amber-500" },
-    info: { bg: "bg-blue-50", border: "border-blue-200", icon: "text-blue-500" },
-    error: { bg: "bg-red-50", border: "border-red-200", icon: "text-red-500" },
+    success: { bg: "rgba(16,185,129,0.06)", border: "rgba(16,185,129,0.2)", icon: "#10b981" },
+    warning: { bg: "rgba(245,158,11,0.06)", border: "rgba(245,158,11,0.2)", icon: "#f59e0b" },
+    info: { bg: "rgba(59,130,246,0.06)", border: "rgba(59,130,246,0.2)", icon: "#3b82f6" },
+    error: { bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.2)", icon: "#ef4444" },
   };
-  
-  const icons = {
-    success: CheckCircle,
-    warning: AlertTriangle,
-    info: Info,
-    error: AlertCircle,
-  };
-  
+  const icons = { success: CheckCircle, warning: AlertTriangle, info: Info, error: AlertCircle };
   const Icon = icons[type] || Info;
-  const style = styles[type] || styles.info;
-  
+  const s = styles[type] || styles.info;
   return (
-    <div className={`flex items-start gap-3 p-4 rounded-xl border ${style.bg} ${style.border}`}>
-      <Icon size={20} className={style.icon} />
-      <div className="flex-1">
-        <p className="font-medium text-gray-900">{title}</p>
-        <p className="text-sm text-gray-600">{message}</p>
+    <div
+      className="flex items-start gap-3 p-4 rounded-2xl"
+      style={{ background: s.bg, border: `1.5px solid ${s.border}`, boxShadow: `0 2px 12px ${s.border}` }}
+    >
+      <div className="mt-0.5 p-1.5 rounded-lg" style={{ background: `${s.icon}18` }}>
+        <Icon size={16} style={{ color: s.icon }} />
       </div>
-      <span className="text-xs text-gray-400">{time}</span>
+      <div className="flex-1">
+        <p className="font-semibold text-gray-900 text-sm">{title}</p>
+        <p className="text-sm text-gray-500 mt-0.5">{message}</p>
+      </div>
+      <span className="text-xs text-gray-400 mt-0.5 whitespace-nowrap">{time}</span>
     </div>
   );
 }
 
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false,
-    },
-  },
-};
+function StatCard({ icon: Icon, label, value, sub, accentColor, iconBg, iconColor }) {
+  return (
+    <div
+      className="relative rounded-2xl p-5 overflow-hidden cursor-default"
+      style={{
+        background: "#fff",
+        border: "1.5px solid rgba(0,0,0,0.06)",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04)",
+        transition: "box-shadow 0.2s, transform 0.2s",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.boxShadow = "0 8px 30px rgba(0,0,0,0.09), 0 2px 8px rgba(0,0,0,0.06)";
+        e.currentTarget.style.transform = "translateY(-2px)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04)";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
+    >
+      <div className="absolute left-0 top-0 h-full w-1 rounded-l-2xl" style={{ background: accentColor }} />
+      <div className="flex items-start justify-between pl-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: accentColor }}>{label}</p>
+          <p className="text-4xl font-bold text-gray-900 leading-none">{value}</p>
+          {sub && <p className="text-xs text-gray-400 mt-2">{sub}</p>}
+        </div>
+        <div className="p-3 rounded-xl" style={{ background: iconBg }}>
+          <Icon size={20} style={{ color: iconColor }} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -106,192 +100,44 @@ export default function Dashboard() {
   const [recentWorkflows, setRecentWorkflows] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [activities, setActivities] = useState([]);
-  
+
   const user = JSON.parse(localStorage.getItem("user")) || { name: "Admin" };
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening";
 
-  // Generate alerts based on stats
-  const getAlerts = () => {
-    if (!stats) return [];
-    const alerts = [];
-    
-    if (stats.delayedTasks > 0) {
-      alerts.push({
-        type: "warning",
-        title: "Delayed Tasks",
-        message: `You have ${stats.delayedTasks} task${stats.delayedTasks > 1 ? 's' : ''} that need attention`,
-        time: "Now"
-      });
-    }
-    
-    if (stats.inProgressTasks > 5) {
-      alerts.push({
-        type: "info",
-        title: "Active Work",
-        message: `${stats.inProgressTasks} tasks are currently in progress`,
-        time: "Now"
-      });
-    }
-    
-    if (stats.completedWorkflows > 0) {
-      alerts.push({
-        type: "success",
-        title: "Workflow Completed",
-        message: `${stats.completedWorkflows} workflow${stats.completedWorkflows > 1 ? 's' : ''} completed successfully`,
-        time: "Today"
-      });
-    }
-    
-    if (stats.teamEfficiency >= 80) {
-      alerts.push({
-        type: "success",
-        title: "Great Efficiency",
-        message: `Team efficiency is at ${stats.teamEfficiency}% - keep it up!`,
-        time: "Now"
-      });
-    }
-    
-    return alerts;
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { fetchDashboardData(); }, []);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       const [statsRes, workflowsRes] = await Promise.all([
         dashboardAPI.getStats(),
-        workflowsAPI.getAll()
+        workflowsAPI.getAll(),
       ]);
-      
       const transformedActivities = (statsRes.data.recentActivity || []).map((activity) => ({
         id: activity.id,
-        user: { name: activity.changed_by || activity.updated_by || "Unknown", avatar: null },
-        action: activity.new_status === 'done' ? 'completed' : 
-                activity.new_status === 'in_progress' ? 'moved' : 
-                activity.new_status === 'review' ? 'moved' : 'updated',
-        target: activity.task_title || activity.title || "Task",
-        targetType: "task",
-        from: activity.old_status,
-        to: activity.new_status,
-        timestamp: new Date(activity.changed_at || activity.updated_at),
+        user: { name: activity.updated_by || "Unknown" },
+        action: activity.status === "done" ? "completed" : "updated",
+        target: activity.title,
+        timestamp: new Date(activity.updated_at),
       }));
-
       setStats(statsRes.data.stats);
       setRecentWorkflows(workflowsRes.data.slice(0, 4));
       setTeamMembers(statsRes.data.teamMembers);
       setActivities(transformedActivities);
     } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
+      console.error("Dashboard fetch failed:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Task Status Doughnut Chart Data
-  const getTaskStatusChartData = () => ({
-    labels: ['Done', 'In Progress', 'In Review', 'To Do'],
-    datasets: [{
-      data: [
-        stats?.doneTasks || 0,
-        stats?.inProgressTasks || 0,
-        stats?.reviewTasks || 0,
-        stats?.todoTasks || 0
-      ],
-      backgroundColor: [
-        '#10b981',
-        '#3b82f6',
-        '#f59e0b',
-        '#6b7280',
-      ],
-      borderWidth: 0,
-      cutout: '70%',
-    }],
-  });
-
-  // Workflow Status Bar Chart Data
-  const getWorkflowChartData = () => ({
-    labels: ['Active', 'Completed', 'Total'],
-    datasets: [{
-      label: 'Workflows',
-      data: [
-        stats?.activeWorkflows || 0,
-        stats?.completedWorkflows || 0,
-        stats?.totalWorkflows || 0
-      ],
-      backgroundColor: [
-        '#6366f1',
-        '#10b981',
-        '#3b82f6',
-      ],
-      borderRadius: 8,
-      barThickness: 40,
-    }],
-  });
-
-  // Weekly Activity Line Chart Data
-  const getWeeklyActivityData = () => ({
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [{
-      label: 'Activities',
-      data: [12, 19, 8, 15, 22, 5, 3],
-      fill: true,
-      borderColor: '#6366f1',
-      backgroundColor: 'rgba(99, 102, 241, 0.1)',
-      tension: 0.4,
-      pointBackgroundColor: '#6366f1',
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2,
-      pointRadius: 4,
-    }],
-  });
-
-  // Team Performance Bar Chart Data
-  const getTeamPerformanceData = () => ({
-    labels: teamMembers.slice(0, 5).map(m => m.name?.split(' ')[0] || 'Unknown'),
-    datasets: [
-      {
-        label: 'Completed',
-        data: teamMembers.slice(0, 5).map(m => m.completed || 0),
-        backgroundColor: '#10b981',
-        borderRadius: 4,
-      },
-      {
-        label: 'In Progress',
-        data: teamMembers.slice(0, 5).map(() => Math.floor(Math.random() * 5) + 1),
-        backgroundColor: '#3b82f6',
-        borderRadius: 4,
-      },
-    ],
-  });
-
-  const barChartOptions = {
-    ...chartOptions,
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: 'rgba(0, 0, 0, 0.05)' },
-      },
-      x: {
-        grid: { display: false },
-      },
-    },
-  };
-
-  const lineChartOptions = {
-    ...chartOptions,
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: 'rgba(0, 0, 0, 0.05)' },
-      },
-      x: {
-        grid: { display: false },
-      },
-    },
+  const getAlerts = () => {
+    if (!stats) return [];
+    const alerts = [];
+    if (stats.delayedTasks > 0) alerts.push({ type: "warning", title: "Delayed Tasks", message: `${stats.delayedTasks} tasks need attention`, time: "Now" });
+    if (stats.completedWorkflows > 0) alerts.push({ type: "success", title: "Workflow Completed", message: `${stats.completedWorkflows} workflows completed successfully`, time: "Today" });
+    return alerts;
   };
 
   if (loading) {
@@ -302,150 +148,121 @@ export default function Dashboard() {
     );
   }
 
+  const totalTasks = stats?.totalTasks || 0;
+
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 min-h-screen p-6"
+      style={{ background: "linear-gradient(160deg, #f5f5ff 0%, #f8f9fc 60%, #f0f4ff 100%)" }}
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            {greeting}, {user.name?.split(" ")[0] || "there"}! 👋
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            {greeting}, {user.name?.split(" ")[0]}.
           </h1>
-          <p className="text-gray-500 mt-1">
-            Here's what's happening with your workflows today.
-          </p>
+          <p className="text-gray-400 mt-1 text-sm">Here's your workflow summary today.</p>
         </div>
-        
-        <button 
+        <button
           onClick={() => navigate("/workflows")}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/30"
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-semibold text-sm transition-all duration-200"
+          style={{
+            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+            boxShadow: "0 4px 15px rgba(99,102,241,0.4), 0 1px 4px rgba(99,102,241,0.2)",
+            border: "1px solid rgba(99,102,241,0.3)",
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.boxShadow = "0 6px 25px rgba(99,102,241,0.5), 0 2px 8px rgba(99,102,241,0.3)";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.boxShadow = "0 4px 15px rgba(99,102,241,0.4), 0 1px 4px rgba(99,102,241,0.2)";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
         >
-          <Plus size={20} />
+          <Plus size={18} />
           New Workflow
         </button>
       </div>
 
-      {/* Alerts Section */}
+      {/* Alerts */}
       {getAlerts().length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Bell size={20} className="text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Notifications & Alerts</h2>
+            <Bell size={18} className="text-gray-500" />
+            <h2 className="text-base font-semibold text-gray-800">Notifications</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {getAlerts().map((alert, index) => (
-              <Alert key={index} {...alert} />
-            ))}
+            {getAlerts().map((alert, i) => <Alert key={i} {...alert} />)}
           </div>
         </div>
       )}
 
-      {/* Analytics Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Task Status Doughnut */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Status Distribution</h3>
-          <div className="h-64 relative">
-            <Doughnut 
-              data={getTaskStatusChartData()} 
-              options={{
-                ...chartOptions,
-                plugins: {
-                  ...chartOptions.plugins,
-                  legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: {
-                      padding: 20,
-                      usePointStyle: true,
-                    }
-                  }
-                }
-              }} 
-            />
+      {/* Stats */}
+      <div
+        className="rounded-2xl p-6"
+        style={{
+          background: "rgba(255,255,255,0.8)",
+          border: "1.5px solid rgba(99,102,241,0.1)",
+          boxShadow: "0 4px 24px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        <div className="mb-5 flex items-center gap-3">
+          <div className="p-2 rounded-lg" style={{ background: "linear-gradient(135deg,rgba(99,102,241,0.12),rgba(79,70,229,0.08))" }}>
+            <TrendingUp size={18} style={{ color: "#6366f1" }} />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Dashboard Overview</h2>
+            <p className="text-xs text-gray-400">Live workflow metrics</p>
           </div>
         </div>
 
-        {/* Workflow Status Bar */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Workflow Overview</h3>
-          <div className="h-64">
-            <Bar data={getWorkflowChartData()} options={barChartOptions} />
-          </div>
-        </div>
-
-        {/* Weekly Activity Line */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Activity</h3>
-          <div className="h-64">
-            <Line data={getWeeklyActivityData()} options={lineChartOptions} />
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Team Performance */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Performance</h3>
-          <div className="h-64">
-            <Bar 
-              data={getTeamPerformanceData()} 
-              options={{
-                ...barChartOptions,
-                plugins: {
-                  legend: {
-                    display: true,
-                    position: 'top',
-                    align: 'end',
-                    labels: {
-                      usePointStyle: true,
-                      boxWidth: 8,
-                    }
-                  }
-                }
-              }} 
-            />
-          </div>
-        </div>
-
-        {/* Quick Stats Cards */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4">
-              <p className="text-sm text-indigo-600 font-medium">Total Tasks</p>
-              <p className="text-3xl font-bold text-indigo-900 mt-1">{stats?.totalTasks || 0}</p>
-              <p className="text-xs text-indigo-500 mt-1">across all workflows</p>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4">
-              <p className="text-sm text-emerald-600 font-medium">Completed</p>
-              <p className="text-3xl font-bold text-emerald-900 mt-1">{stats?.doneTasks || 0}</p>
-              <p className="text-xs text-emerald-500 mt-1">{stats?.teamEfficiency || 0}% completion rate</p>
-            </div>
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
-              <p className="text-sm text-blue-600 font-medium">In Progress</p>
-              <p className="text-3xl font-bold text-blue-900 mt-1">{stats?.inProgressTasks || 0}</p>
-              <p className="text-xs text-blue-500 mt-1">tasks being worked on</p>
-            </div>
-            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4">
-              <p className="text-sm text-amber-600 font-medium">Pending</p>
-              <p className="text-3xl font-bold text-amber-900 mt-1">{(stats?.todoTasks || 0) + (stats?.reviewTasks || 0)}</p>
-              <p className="text-xs text-amber-500 mt-1">awaiting action</p>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <StatCard icon={ListChecks} label="Total Tasks" value={totalTasks} sub="Across all workflows" accentColor="#6366f1" iconBg="rgba(99,102,241,0.1)" iconColor="#6366f1" />
+          <StatCard icon={CheckCircle2} label="Completed" value={stats?.doneTasks || 0} sub={`${stats?.teamEfficiency || 0}% efficiency`} accentColor="#10b981" iconBg="rgba(16,185,129,0.1)" iconColor="#10b981" />
+          <StatCard icon={Zap} label="In Progress" value={stats?.inProgressTasks || 0} sub="Currently active" accentColor="#3b82f6" iconBg="rgba(59,130,246,0.1)" iconColor="#3b82f6" />
+          <StatCard icon={AlertTriangle} label="Pending" value={(stats?.todoTasks || 0) + (stats?.reviewTasks || 0)} sub="Awaiting action" accentColor="#f59e0b" iconBg="rgba(245,158,11,0.1)" iconColor="#f59e0b" />
+          <StatCard icon={Clock} label="Avg Completion" value={stats?.avgCompletionTime || "—"} sub="Per completed task" accentColor="#8b5cf6" iconBg="rgba(139,92,246,0.1)" iconColor="#8b5cf6" />
+          <StatCard icon={LayoutGrid} label="Active Workflows" value={stats?.activeWorkflows || 0} sub="Running workflows" accentColor="#f43f5e" iconBg="rgba(244,63,94,0.1)" iconColor="#f43f5e" />
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+      <div
+        className="rounded-2xl p-5"
+        style={{
+          background: "rgba(255,255,255,0.85)",
+          border: "1.5px solid rgba(99,102,241,0.08)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <h2 className="text-base font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {quickActions.map((action) => (
             <button
               key={action.label}
-              className="flex flex-col items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group"
+              className="flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-200"
+              style={{
+                background: "rgba(248,248,255,0.8)",
+                border: "1.5px solid rgba(99,102,241,0.08)",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = "rgba(99,102,241,0.2)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(99,102,241,0.1)";
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.background = "rgba(99,102,241,0.03)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = "rgba(99,102,241,0.08)";
+                e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)";
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.background = "rgba(248,248,255,0.8)";
+              }}
             >
-              <div className={`p-3 rounded-xl ${action.color} text-white group-hover:scale-110 transition-transform`}>
+              <div className="p-3 rounded-xl text-white" style={{ background: action.gradient, boxShadow: `0 4px 12px ${action.shadow}` }}>
                 <action.icon size={20} />
               </div>
               <span className="text-sm font-medium text-gray-700">{action.label}</span>
@@ -454,81 +271,84 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Content Grid */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Workflows */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Workflows</h2>
-            <button 
+            <h2 className="text-base font-bold text-gray-900">Recent Workflows</h2>
+            <button
               onClick={() => navigate("/workflows")}
-              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+              className="text-sm font-medium flex items-center gap-1 transition-colors"
+              style={{ color: "#6366f1" }}
+              onMouseEnter={e => e.currentTarget.style.color = "#4f46e5"}
+              onMouseLeave={e => e.currentTarget.style.color = "#6366f1"}
             >
-              View All <ArrowRight size={16} />
+              View All <ArrowRight size={15} />
             </button>
           </div>
-          
-          {recentWorkflows.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {recentWorkflows.map((workflow) => (
-                <WorkflowCard 
-                  key={workflow.id}
-                  workflow={workflow}
-                  onClick={() => navigate(`/workflows/${workflow.id}`)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 bg-white rounded-2xl border border-gray-100">
-              <p className="text-gray-500">No workflows found. Create your first workflow!</p>
-              <button 
-                onClick={() => navigate("/workflows")}
-                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium"
-              >
-                Create Workflow
-              </button>
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {recentWorkflows.map((workflow) => (
+              <WorkflowCard
+                key={workflow.id}
+                workflow={workflow}
+                onClick={() => navigate(`/workflows/${workflow.id}`)}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Activity & Team */}
-        <div className="space-y-6">
-          {/* Team Overview */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Team Activity</h3>
-              <button className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+        {/* Right Column */}
+        <div className="space-y-5">
+          {/* Team Activity */}
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: "rgba(255,255,255,0.9)",
+              border: "1.5px solid rgba(99,102,241,0.08)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+            }}
+          >
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(99,102,241,0.07)" }}>
+              <h3 className="font-bold text-gray-900 text-sm">Team Activity</h3>
+              <button
+                className="text-xs font-semibold transition-colors"
+                style={{ color: "#6366f1" }}
+                onMouseEnter={e => e.currentTarget.style.color = "#4f46e5"}
+                onMouseLeave={e => e.currentTarget.style.color = "#6366f1"}
+              >
                 View All
               </button>
             </div>
-            
-            <div className="divide-y divide-gray-50">
-              {teamMembers.length > 0 ? (
-                teamMembers.slice(0, 5).map((member) => (
-                  <div key={member.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={member.name} size="sm" status="online" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{member.name}</p>
-                        <p className="text-xs text-gray-500">{member.role}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">{member.tasks || 0}</p>
-                      <p className="text-xs text-gray-500">tasks</p>
+            <div>
+              {teamMembers.slice(0, 5).map((member, i) => (
+                <div
+                  key={member.id}
+                  className="px-5 py-3 flex items-center justify-between transition-all duration-150"
+                  style={{ borderBottom: i < Math.min(teamMembers.length, 5) - 1 ? "1px solid rgba(99,102,241,0.05)" : "none" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(99,102,241,0.03)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar name={member.name} size="sm" status="online" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{member.name}</p>
+                      <p className="text-xs text-gray-400">{member.role}</p>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="px-5 py-4 text-center text-gray-500 text-sm">
-                  No team members found
+                  <div className="text-right">
+                    <p className="text-sm font-bold" style={{ color: "#6366f1" }}>{member.tasks}</p>
+                    <p className="text-xs text-gray-400">tasks</p>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
 
           {/* Activity Feed */}
-          <ActivityFeed activities={activities} maxItems={5} />
+          <div style={{ borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.06)", border: "1.5px solid rgba(99,102,241,0.08)" }}>
+            <ActivityFeed activities={activities} maxItems={5} />
+          </div>
         </div>
       </div>
     </div>

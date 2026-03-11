@@ -31,11 +31,18 @@ export function Dropdown({
       
       {isOpen && (
         <div 
-          className={`absolute ${alignClass} mt-2 ${width} bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-fadeIn`}
+          className={`absolute ${alignClass} mt-2 ${width} rounded-xl py-1 z-50 animate-fadeIn`}
+          style={{
+            background: "linear-gradient(160deg, rgba(224,231,255,0.98) 0%, rgba(238,242,255,0.98) 100%)",
+            border: "1.5px solid rgba(99,102,241,0.15)",
+            boxShadow: "0 8px 32px rgba(99,102,241,0.15), 0 2px 8px rgba(99,102,241,0.08)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+          }}
         >
           {items.map((item, index) => {
             if (item.divider) {
-              return <div key={index} className="my-1 border-t border-gray-100" />;
+              return <div key={index} className="my-1" style={{ borderTop: "1px solid rgba(99,102,241,0.12)" }} />;
             }
             
             return (
@@ -45,24 +52,39 @@ export function Dropdown({
                   item.onClick?.();
                   if (!item.keepOpen) setIsOpen(false);
                 }}
-                className={`
-                  w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left
-                  transition-colors duration-150
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-all duration-150 rounded-lg mx-auto
                   ${item.disabled 
                     ? "text-gray-400 cursor-not-allowed" 
                     : item.danger 
                       ? "text-red-600 hover:bg-red-50" 
-                      : "text-gray-700 hover:bg-gray-50"
+                      : "text-gray-700"
                   }
-                  ${item.icon ? "has-icon" : ""}
                 `}
+                style={!item.disabled && !item.danger ? {
+                  "--hover-bg": "rgba(99,102,241,0.08)",
+                } : {}}
+                onMouseEnter={e => {
+                  if (!item.disabled && !item.danger) {
+                    e.currentTarget.style.background = "rgba(99,102,241,0.1)";
+                    e.currentTarget.style.color = "#4f46e5";
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!item.disabled && !item.danger) {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#374151";
+                  }
+                }}
                 disabled={item.disabled}
               >
-                {item.icon && <span className="text-gray-400">{item.icon}</span>}
+                {item.icon && (
+                  <span style={{ color: "rgba(99,102,241,0.6)" }}>{item.icon}</span>
+                )}
                 <span className="flex-1">{item.label}</span>
                 {item.checked && <Check size={16} className="text-indigo-600" />}
                 {item.badge && (
-                  <span className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-600 rounded-full">
+                  <span className="px-2 py-0.5 text-xs rounded-full"
+                    style={{ background: "rgba(99,102,241,0.12)", color: "#4f46e5" }}>
                     {item.badge}
                   </span>
                 )}

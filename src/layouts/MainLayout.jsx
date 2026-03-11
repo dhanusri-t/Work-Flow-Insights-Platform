@@ -13,7 +13,7 @@ import {
   FolderKanban,
   X,
   HelpCircle,
-  Zap
+  Fan
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 
@@ -38,15 +38,15 @@ export default function MainLayout() {
   const linkClass = ({ isActive }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
       isActive
-        ? "bg-indigo-50 text-indigo-700"
-        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        ? "bg-white/70 text-indigo-700 shadow-sm"
+        : "text-indigo-900/60 hover:bg-white/50 hover:text-indigo-900"
     }`;
 
   const collapsedLinkClass = ({ isActive }) =>
     `flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 ${
       isActive
-        ? "bg-indigo-50 text-indigo-700"
-        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+        ? "bg-white/70 text-indigo-700 shadow-sm"
+        : "text-indigo-900/50 hover:bg-white/50 hover:text-indigo-900"
     }`;
 
   const logout = () => {
@@ -60,17 +60,17 @@ export default function MainLayout() {
       <div className="p-4 flex items-center justify-between">
         <div className={`flex items-center gap-3 ${collapsed ? "justify-center w-full" : ""}`}>
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <Zap className="w-6 h-6 text-white" />
+            { <Fan className="w-6 h-6 text-white" /> }
           </div>
           {!collapsed && (
-            <span className="text-xl font-bold text-gray-900">Flowcraft</span>
+            <span className="text-xl font-bold text-indigo-950">Flowcraft</span>
           )}
         </div>
-        
+
         {/* Mobile Close */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+          className="lg:hidden p-2 rounded-lg hover:bg-white/50 text-indigo-700"
         >
           <X size={20} />
         </button>
@@ -78,7 +78,7 @@ export default function MainLayout() {
         {/* Desktop Collapse Toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+          className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/50 text-indigo-400 hover:text-indigo-700 transition-colors"
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -87,14 +87,14 @@ export default function MainLayout() {
       {/* Workspace Selector */}
       {!collapsed && (
         <div className="px-4 mb-4">
-          <button className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+          <button className="w-full flex items-center justify-between p-3 bg-white/40 rounded-xl hover:bg-white/60 transition-colors border border-indigo-100/60">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
                 <FolderKanban className="w-4 h-4 text-indigo-600" />
               </div>
               <div className="text-left">
-                <p className="text-sm font-medium text-gray-900">Acme Corp</p>
-                <p className="text-xs text-gray-500">Enterprise Plan</p>
+                <p className="text-sm font-medium text-indigo-950">Acme Corp</p>
+                <p className="text-xs text-indigo-400">Enterprise Plan</p>
               </div>
             </div>
           </button>
@@ -103,7 +103,6 @@ export default function MainLayout() {
 
       {/* Navigation */}
       <nav className={`px-3 flex-1 ${collapsed ? "px-2" : ""}`}>
-        {/* Main Nav */}
         <div className="space-y-1">
           {navItems.map((item) => (
             <NavLink
@@ -118,8 +117,9 @@ export default function MainLayout() {
           ))}
         </div>
 
-        {/* Bottom Nav */}
-        <div className={`mt-8 pt-4 border-t border-gray-100 space-y-1 ${collapsed ? "px-2" : ""}`}>
+        <div className={`mt-8 pt-4 space-y-1 ${collapsed ? "px-2" : ""}`}
+          style={{ borderTop: "1px solid rgba(99,102,241,0.15)" }}
+        >
           {bottomNavItems.map((item) => (
             <NavLink
               key={item.to}
@@ -135,10 +135,13 @@ export default function MainLayout() {
       </nav>
 
       {/* User Section */}
-      <div className={`p-4 border-t border-gray-100 ${collapsed ? "px-2" : ""}`}>
+      <div
+        className={`p-4 ${collapsed ? "px-2" : ""}`}
+        style={{ borderTop: "1px solid rgba(99,102,241,0.15)" }}
+      >
         <button
           onClick={logout}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 transition-colors ${
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-white/60 hover:text-red-600 transition-colors ${
             collapsed ? "justify-center" : ""
           }`}
         >
@@ -153,9 +156,14 @@ export default function MainLayout() {
     <div className="h-screen flex bg-gray-50">
       {/* Desktop Sidebar */}
       <aside
-        className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
+        className={`hidden lg:flex flex-col border-r transition-all duration-300 ${
           collapsed ? "w-[72px]" : "w-[260px]"
         }`}
+        style={{
+          background: "linear-gradient(180deg, #e0e7ff 0%, #ede9fe 60%, #e0e7ff 100%)",
+          borderRight: "1px solid rgba(99,102,241,0.15)",
+          boxShadow: "2px 0 16px rgba(99,102,241,0.08)",
+        }}
       >
         <SidebarContent />
       </aside>
@@ -163,11 +171,17 @@ export default function MainLayout() {
       {/* Mobile Sidebar */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute left-0 top-0 bottom-0 w-[260px] bg-white animate-slideIn">
+          <aside
+            className="absolute left-0 top-0 bottom-0 w-[260px] animate-slideIn"
+            style={{
+              background: "linear-gradient(180deg, #e0e7ff 0%, #ede9fe 60%, #e0e7ff 100%)",
+              borderRight: "1px solid rgba(99,102,241,0.15)",
+            }}
+          >
             <SidebarContent />
           </aside>
         </div>
@@ -175,8 +189,8 @@ export default function MainLayout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar 
-          onMenuClick={() => setMobileOpen(true)} 
+        <Navbar
+          onMenuClick={() => setMobileOpen(true)}
           showMenuButton={true}
         />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
