@@ -28,7 +28,6 @@ export default function KanbanBoard({
   const handleDragStart = (e, task) => {
     setDraggedTask(task);
     e.dataTransfer.effectAllowed = "move";
-    // Create custom drag image
     const ghost = e.target.cloneNode(true);
     ghost.style.opacity = "0.8";
     document.body.appendChild(ghost);
@@ -55,12 +54,12 @@ export default function KanbanBoard({
     setDragOverColumn(null);
   };
 
-  const getPriorityColor = (priority) => {
+  const getPriorityBadge = (priority) => {
     switch (priority) {
-      case "high": return "bg-red-500";
-      case "medium": return "bg-amber-500";
-      case "low": return "bg-blue-500";
-      default: return "bg-gray-400";
+      case "high":   return { label: "High",   bg: "rgba(239,68,68,0.1)",  color: "#dc2626", border: "rgba(239,68,68,0.25)"  };
+      case "medium": return { label: "Medium", bg: "rgba(245,158,11,0.1)", color: "#d97706", border: "rgba(245,158,11,0.25)" };
+      case "low":    return { label: "Low",    bg: "rgba(34,197,94,0.1)",  color: "#16a34a", border: "rgba(34,197,94,0.25)"  };
+      default:       return null;
     }
   };
 
@@ -127,9 +126,19 @@ export default function KanbanBoard({
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <GripVertical size={14} className="text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
-                      {task.priority && (
-                        <span className={`w-1.5 h-1.5 rounded-full ${getPriorityColor(task.priority)}`} />
-                      )}
+                      {task.priority && (() => {
+                        const p = getPriorityBadge(task.priority);
+                        if (!p) return null;
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold"
+                            style={{ background: p.bg, color: p.color, border: `1px solid ${p.border}` }}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-sm inline-block" style={{ background: p.color }} />
+                            {p.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     {task.assignee && (
                       <Avatar 
