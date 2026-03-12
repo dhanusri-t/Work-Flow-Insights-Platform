@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { Check } from "lucide-react";
 
-export function Dropdown({ 
-  trigger, 
-  items, 
-  align = "right", 
+export function Dropdown({
+  trigger,
+  items,
+  align = "right",
   width = "w-48",
-  className = "" 
+  className = ""
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -25,12 +25,16 @@ export function Dropdown({
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      <span onClick={() => setIsOpen(!isOpen)} className="cursor-pointer inline-block">
+      {/* ✅ stopPropagation so trigger click doesn't bubble to parent card */}
+      <span
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+        className="cursor-pointer inline-block"
+      >
         {trigger}
       </span>
-      
+
       {isOpen && (
-        <div 
+        <div
           className={`absolute ${alignClass} mt-2 ${width} rounded-xl py-1 z-50 animate-fadeIn`}
           style={{
             background: "linear-gradient(160deg, rgba(224,231,255,0.98) 0%, rgba(238,242,255,0.98) 100%)",
@@ -44,25 +48,23 @@ export function Dropdown({
             if (item.divider) {
               return <div key={index} className="my-1" style={{ borderTop: "1px solid rgba(99,102,241,0.12)" }} />;
             }
-            
+
             return (
               <button
                 key={index}
-                onClick={() => {
-                  item.onClick?.();
+                onClick={(e) => {
+                  e.stopPropagation(); // ✅ prevent click bubbling to card
+                  item.onClick?.(e);
                   if (!item.keepOpen) setIsOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-all duration-150 rounded-lg mx-auto
-                  ${item.disabled 
-                    ? "text-gray-400 cursor-not-allowed" 
-                    : item.danger 
-                      ? "text-red-600 hover:bg-red-50" 
+                  ${item.disabled
+                    ? "text-gray-400 cursor-not-allowed"
+                    : item.danger
+                      ? "text-red-600 hover:bg-red-50"
                       : "text-gray-700"
                   }
                 `}
-                style={!item.disabled && !item.danger ? {
-                  "--hover-bg": "rgba(99,102,241,0.08)",
-                } : {}}
                 onMouseEnter={e => {
                   if (!item.disabled && !item.danger) {
                     e.currentTarget.style.background = "rgba(99,102,241,0.1)";
