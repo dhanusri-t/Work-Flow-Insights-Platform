@@ -5,38 +5,48 @@ import Workflows from "../pages/Workflows";
 import WorkflowDetails from "../pages/WorkflowDetails";
 import Tasks from "../pages/Tasks";
 import Team from "../pages/Team";
+import NotFound from "../pages/NotFound";
 import MainLayout from "../layouts/MainLayout";
 
 const isAuthenticated = () => !!localStorage.getItem("token");
 
 const PrivateRoute = ({ children }) =>
-  isAuthenticated() ? children : <Navigate to="/login" />;
+  isAuthenticated() ? children : <Navigate to="/login" replace />;
+
+const PublicRoute = ({ children }) =>
+  isAuthenticated() ? <Navigate to="/dashboard" replace /> : children;
 
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      {/* Root → redirect based on auth */}
+      <Route path="/" element={
+        isAuthenticated()
+          ? <Navigate to="/dashboard" replace />
+          : <Navigate to="/login" replace />
+      } />
 
-      <Route
-        element={
-          <PrivateRoute>
-            <MainLayout />
-          </PrivateRoute>
-        }
-      >
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/workflows" element={<Workflows />} />
+      {/* Login — redirect to dashboard if already logged in */}
+      <Route path="/login" element={
+        <PublicRoute><Login /></PublicRoute>
+      } />
+
+      {/* Protected routes */}
+      <Route element={
+        <PrivateRoute><MainLayout /></PrivateRoute>
+      }>
+        <Route path="/dashboard"     element={<Dashboard />} />
+        <Route path="/workflows"     element={<Workflows />} />
         <Route path="/workflows/:id" element={<WorkflowDetails />} />
-        <Route path="/tasks" element={<Tasks />} />
-        <Route path="/team" element={<Team />} />
-
-        {/* Placeholder routes for new sections */}
-        <Route path="/analytics" element={<AnalyticsPlaceholder />} />
-        <Route path="/settings" element={<SettingsPlaceholder />} />
-        <Route path="/help" element={<HelpPlaceholder />} />
+        <Route path="/tasks"         element={<Tasks />} />
+        <Route path="/team"          element={<Team />} />
+        <Route path="/analytics"     element={<AnalyticsPlaceholder />} />
+        <Route path="/settings"      element={<SettingsPlaceholder />} />
+        <Route path="/help"          element={<HelpPlaceholder />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/login" />} />
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
@@ -51,9 +61,7 @@ function AnalyticsPlaceholder() {
           </svg>
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Analytics</h2>
-        <p className="text-gray-500 max-w-md">
-          Gain insights into your workflow performance, team productivity, and identify areas for improvement.
-        </p>
+        <p className="text-gray-500 max-w-md">Gain insights into your workflow performance and team productivity.</p>
       </div>
     </div>
   );
@@ -70,9 +78,7 @@ function SettingsPlaceholder() {
           </svg>
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Settings</h2>
-        <p className="text-gray-500 max-w-md">
-          Configure your workspace settings, integrations, notifications, and account preferences.
-        </p>
+        <p className="text-gray-500 max-w-md">Configure your workspace settings and account preferences.</p>
       </div>
     </div>
   );
@@ -88,9 +94,7 @@ function HelpPlaceholder() {
           </svg>
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Help & Support</h2>
-        <p className="text-gray-500 max-w-md">
-          Get help with Flowcraft, browse documentation, and contact our support team.
-        </p>
+        <p className="text-gray-500 max-w-md">Get help with Flowcraft and browse documentation.</p>
       </div>
     </div>
   );
