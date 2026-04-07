@@ -5,7 +5,10 @@ import Workflows from "../pages/Workflows";
 import WorkflowDetails from "../pages/WorkflowDetails";
 import Tasks from "../pages/Tasks";
 import Team from "../pages/Team";
-import NotFound from "../pages/NotFound";
+import NotFound  from "../pages/NotFound";
+import Settings   from "../pages/Settings";
+import Analytics  from "../pages/Analytics";
+import AuthCallback from "../pages/AuthCallback";
 import MainLayout from "../layouts/MainLayout";
 
 const isAuthenticated = () => !!localStorage.getItem("token");
@@ -40,10 +43,13 @@ export default function AppRoutes() {
         <Route path="/workflows/:id" element={<WorkflowDetails />} />
         <Route path="/tasks"         element={<Tasks />} />
         <Route path="/team"          element={<Team />} />
-        <Route path="/analytics"     element={<AnalyticsPlaceholder />} />
-        <Route path="/settings"      element={<SettingsPlaceholder />} />
+        <Route path="/analytics"     element={<Analytics />} />
+        <Route path="/settings"      element={<Settings />} />
         <Route path="/help"          element={<HelpPlaceholder />} />
       </Route>
+
+      {/* Auth callback — Google OAuth */}
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* 404 */}
       <Route path="*" element={<NotFound />} />

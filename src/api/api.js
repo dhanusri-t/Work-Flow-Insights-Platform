@@ -32,7 +32,13 @@ api.interceptors.response.use(
     // Auto-logout on 401 (expired/invalid token)
     if (status === 401) {
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
       window.location.href = "/login";
+    }
+
+    // Rate limit — attach a user-friendly message
+    if (status === 429) {
+      error.userMessage = message || "Too many requests. Please wait a moment and try again.";
     }
 
     // Attach a clean message to the error so components can use it easily:
@@ -83,9 +89,10 @@ export const tasksAPI = {
 
 // ── Team API ──────────────────────────────────────────────────────────────────
 export const teamAPI = {
-  getAll: ()           => api.get("/dashboard/team"),
-  updateRole: (id, role) => api.put(`/dashboard/team/${id}/role`, { role }),
-  remove: (id)         => api.delete(`/dashboard/team/${id}`),
+  getAll:     ()           => api.get(`/dashboard/team`),
+  updateRole: (id, role)   => api.put(`/dashboard/team/${id}/role`, { role }),
+  remove:     (id)         => api.delete(`/dashboard/team/${id}`),
+  invite:     (data)       => api.post(`/dashboard/team/invite`, data),
 };
 
 export default api;

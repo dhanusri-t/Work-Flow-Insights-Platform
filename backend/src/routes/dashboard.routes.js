@@ -108,20 +108,82 @@ router.get("/team", authenticate, async (req, res) => {
       SELECT u.id, u.name, u.email, u.role, u.created_at,
         COUNT(t.id) as task_count,
         SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END) as completed_tasks,
-        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as active_tasks
+        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as active_tasks,
+        COUNT(DISTINCT t.workflow_id) as workflow_count
       FROM users u LEFT JOIN tasks t ON t.assigned_to = u.id
       WHERE u.company_id = ? GROUP BY u.id ORDER BY u.role, u.name
     `, [companyId]);
 
     res.json(members.map(m => ({
       id: m.id, name: m.name, email: m.email, role: m.role, joined_at: m.created_at,
-      tasks: { total: m.task_count || 0, completed: m.completed_tasks || 0, active: m.active_tasks || 0 }
+      tasks: { total: m.task_count || 0, completed: m.completed_tasks || 0, active: m.active_tasks || 0 },
+      workflows: m.workflow_count || 0
     })));
   } catch (error) {
     console.error("Get team error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
+// ── POST invite new member — admin and manager ────────────────────────────────
+router.post("/team/invite",
+  authenticate,
+  requireRole("admin", "manager"),
+  [
+    body("name").trim().notEmpty().withMessage("Name is required")
+      .isLength({ min: 2 }).withMessage("Name must be at least 2 characters"),
+    body("email").trim().notEmpty().withMessage("Email is required")
+      .isEmail().withMessage("Must be a valid email"),
+    body("role")
+      .optional()
+      .isIn(["admin", "manager", "member", "viewer"]).withMessage("Invalid role"),
+  ],
+  validate,
+  async (req, res) => {
+    try {
+      const { name, email, role = "member" } = req.body;
+      const { companyId, role: inviterRole } = req.user;
+
+      // Managers can only invite members and viewers
+      if (inviterRole === "manager" && ["admin", "manager"].includes(role)) {
+        return res.status(403).json({ message: "Managers can only invite members and viewers" });
+      }
+
+      // Check email not already in this company
+      const [existing] = await db.query(
+        "SELECT id FROM users WHERE email = ? AND company_id = ?",
+        [email, companyId]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ message: "A user with this email already exists" });
+      }
+
+      // Generate readable temp password e.g. maple4829
+      const words  = ["maple","river","cloud","stone","frost","amber","cedar","ocean"];
+      const word   = words[Math.floor(Math.random() * words.length)];
+      const digits = Math.floor(1000 + Math.random() * 9000);
+      const tempPass = word + digits;
+
+      const bcrypt = await import("bcrypt");
+      const hash   = await bcrypt.default.hash(tempPass, 12);
+
+      const [result] = await db.query(
+        `INSERT INTO users (name, email, password_hash, role, company_id) VALUES (?, ?, ?, ?, ?)`,
+        [name, email, hash, role, companyId]
+      );
+
+      res.status(201).json({
+        message:      "Member invited successfully",
+        tempPassword: tempPass,
+        user: { id: result.insertId, name, email, role },
+      });
+    } catch (error) {
+      console.error("Invite member error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
 
 // ── PUT update member role — admin only ───────────────────────────────────────
 router.put("/team/:id/role",
@@ -185,5 +247,6 @@ router.delete("/team/:id",
     }
   }
 );
+
 
 export default router;
